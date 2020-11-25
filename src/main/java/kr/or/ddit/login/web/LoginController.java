@@ -2,6 +2,7 @@ package kr.or.ddit.login.web;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
@@ -10,6 +11,7 @@ import javax.servlet.http.HttpSession;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.SessionAttributes;
 import org.springframework.web.servlet.ModelAndView;
 
+import kr.or.ddit.login.service.KakaoAPI;
 import kr.or.ddit.member.model.MemberVO;
 import kr.or.ddit.member.service.MemberServiceI;
 
@@ -35,6 +38,9 @@ public class LoginController {
 	
 	@Resource(name="memberService")
 	private MemberServiceI memberService;
+	
+	@Autowired
+	private KakaoAPI kakao;
 	
 	@RequestMapping("/json")
 	public String json() {
@@ -53,7 +59,7 @@ public class LoginController {
 		//응답은 jsp그대로 사용 => spring에서는 관습적으로 WEB-INF에 저장 -> 사용자의 jsp접근을 막겠다.
 		return "login/login";
 	}
-	
+	 
 	// 로그인 요청 처리
 	@RequestMapping(path="/process", params = {"userid"})
 	public String process(String userid, String pass, MemberVO memberVO, HttpSession session, Model model, 
@@ -86,6 +92,28 @@ public class LoginController {
 		logger.debug("unt_cd : {}", unt_cd );
 		return "main";
 	}
+	
+	// 로그인화면 처리
+		@RequestMapping("/kakao")
+		@GetMapping()
+		public String kakao(@RequestParam(value="code",required=false) String code, HttpSession session ) throws Exception {
+			logger.debug("#########kakao code : {}",code);
+			//토큰가져오기
+			String access_Token = kakao.getAccessToken(code);
+			logger.debug("#########access_token : {}",access_Token);
+			
+			//토큰이용해 회원정보 가져오기
+			HashMap<String, Object> userInfo = kakao.getUserInfo(access_Token);
+			logger.debug("########userInfo:{}",userInfo);
+			
+//		    클라이언트의 이메일이 존재할 때 세션에 해당 이메일과 토큰 등록
+		    if (userInfo.get("email") != null) {
+		        session.setAttribute("S_MEMBER", userInfo.get("email"));
+		        session.setAttribute("access_Token", access_Token);
+		    }
+			
+			return "login/login";
+		}
 	
 	
 	
